@@ -1,0 +1,110 @@
+// Prisma schema for VAJCO - farmářský e-shop s čerstvými vejci
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String
+  size        String // e.g. "10 ks"
+  price       Int // in CZK (halere not needed)
+  imageUrl    String?
+  available   Boolean     @default(true)
+  stock       Int         @default(0)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model PickupLocation {
+  id          String     @id @default(cuid())
+  name        String
+  address     String
+  city        String
+  lat         Float
+  lng         Float
+  description String?
+  active      Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  timeSlots   TimeSlot[]
+  orders      Order[]
+}
+
+model TimeSlot {
+  id               String         @id @default(cuid())
+  pickupLocationId String
+  pickupLocation   PickupLocation @relation(fields: [pickupLocationId], references: [id], onDelete: Cascade)
+  date             String // YYYY-MM-DD
+  startTime        String // HH:mm
+  endTime          String // HH:mm
+  capacity         Int            @default(5)
+  orders           Order[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([pickupLocationId, date, startTime])
+  @@index([date])
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  PREPARED
+  PICKED_UP
+  CANCELLED
+}
+
+model Order {
+  id               String         @id @default(cuid())
+  orderNumber      String         @unique
+  customerName     String
+  email            String
+  phone            String
+  note             String?
+  pickupLocationId String
+  pickupLocation   PickupLocation @relation(fields: [pickupLocationId], references: [id])
+  timeSlotId       String
+  timeSlot         TimeSlot       @relation(fields: [timeSlotId], references: [id])
+  status           OrderStatus    @default(NEW)
+  totalPrice       Int
+  items            OrderItem[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  authorName String
+  rating    Int      @default(5)
+  text      String
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model FaqItem {
+  id        String @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int    @default(0)
+}
